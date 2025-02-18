@@ -12,5 +12,12 @@
       "path": "/graphql",
       "auth": "bearer-token"
     }
+  },
+  "models": {
+    "text-generator": {
+      "sourceModel": "meta-llama/Llama-3.2-3B-Instruct",
+      "provider": "hugging-face",
+      "connection": "hypermode"
+    }
   }
 }

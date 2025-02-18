@@ -1,5 +1,11 @@
 {
   "$schema": "https://schema.hypermode.com/modus.json",
+  "connections": {
+    "dgraph": {
+      "type": "http",
+      "endpoint": "https://dawn-bush.us-east-1.aws.cloud.dgraph.io/graphql"
+    }
+  },
   "endpoints": {
     "default": {
       "type": "graphql",

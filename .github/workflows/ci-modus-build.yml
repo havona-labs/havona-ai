@@ -1,5 +1,4 @@
-
-name: ci-hypermode-functions
+name: ci-modus-build
 
 on:
   workflow_dispatch:

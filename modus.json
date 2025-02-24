@@ -1,20 +1,14 @@
 {
   "$schema": "https://schema.hypermode.com/modus.json",
-  "connections": {
-    "dgraph": {
-      "type": "http",
-      "endpoint": "https://dawn-bush.us-east-1.aws.cloud.dgraph.io/graphql"
-    }
-  },
   "endpoints": {
     "default": {
       "type": "graphql",
-      "path": "/graphql",
+      "path": "/https://dawn-bush.us-east-1.aws.cloud.dgraph.io/graphql",
       "auth": "bearer-token"
     }
   },
   "models": {
-    "text-generator": {
+    "post-trade-text-generator": {
       "sourceModel": "meta-llama/Llama-3.2-3B-Instruct",
       "provider": "hugging-face",
       "connection": "hypermode"

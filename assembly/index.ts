@@ -9,45 +9,10 @@ import {
 // this model name should match the one defined in the modus.json manifest file
 const modelName: string = "post-trade-text-generator";
 
-// In AssemblyScript, we need to use class instead of type/interface
-class DataContext {
-  schema: string;
-  currentData: string;
-  userContext: string;
-
-  constructor(schema: string, currentData: string, userContext: string = "") {
-    this.schema = schema;
-    this.currentData = currentData;
-    this.userContext = userContext;
-  }
-}
-
-// Adding schemaContext parameter to provide database/schema information
-export function generateTextWithContext(
-  instruction: string,
-  prompt: string,
-  dataContext: DataContext,
-): string {
+export function generateText(instruction: string, prompt: string): string {
   const model = models.getModel<OpenAIChatModel>(modelName);
-
-  // Create a comprehensive context combining schema and current data
-  const enhancedInstruction = `
-    Schema Definition:
-    ${dataContext.schema}
-    
-    Current Data Context:
-    ${dataContext.currentData}
-    
-    ${dataContext.userContext ? `User Context:\n${dataContext.userContext}\n` : ""}
-    
-    Instructions:
-    ${instruction}
-    
-    Please provide accurate information based on the above context and data.
-  `;
-
   const input = model.createInput([
-    new SystemMessage(enhancedInstruction),
+    new SystemMessage(instruction),
     new UserMessage(prompt),
   ]);
 
@@ -57,30 +22,3 @@ export function generateTextWithContext(
   const output = model.invoke(input);
   return output.choices[0].message.content.trim();
 }
-
-// Example usage:
-const dataContext = new DataContext(
-  `
-    type Trade {
-      id: ID!
-      timestamp: DateTime!
-      amount: Float!
-      status: String!
-      trader: String!
-    }
-  `,
-  `
-    Recent Trades:
-    - Trade #1234: amount: $5000, timestamp: 2024-03-20 14:30:00, trader: "John Doe"
-    - Trade #1235: amount: $3200, timestamp: 2024-03-20 14:35:00, trader: "Jane Smith"
-    
-    Trading Statistics:
-    - Total Daily Volume: $25,000
-    - Average Trade Size: $4,100
-  `,
-  `
-    User: John Doe
-    Role: Senior Trader
-    Permissions: Full access to trade data
-  `,
-);

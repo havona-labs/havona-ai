@@ -3,8 +3,15 @@
   "endpoints": {
     "default": {
       "type": "graphql",
-      "path": "/https://dawn-bush.us-east-1.aws.cloud.dgraph.io/graphql",
+      "path": "/https://nameless-brook-640008.eu-central-1.aws.cloud.dgraph.io/graphql",
       "auth": "bearer-token"
+    }
+  },
+  "connections": {
+    "dgraph": {
+      "type": "dgraph",
+      "grpcTarget": "havona-ai-final-havona-tech-ltd.hypermode.host:443",
+      "key": "mfn1UTmvQa!hTq"
     }
   },
   "models": {

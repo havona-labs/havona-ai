@@ -6,11 +6,9 @@ import {
   UserMessage,
 } from "@hypermode/modus-sdk-as/models/openai/chat";
 
-// this model name should match the one defined in the modus.json manifest file
-const modelName: string = "post-trade-text-generator";
-
 export function generateText(instruction: string, prompt: string): string {
-  const model = models.getModel<OpenAIChatModel>(modelName);
+  const model = models.getModel<OpenAIChatModel>("post-trade-text-generator");
+
   const input = model.createInput([
     new SystemMessage(instruction),
     new UserMessage(prompt),
@@ -21,5 +19,10 @@ export function generateText(instruction: string, prompt: string): string {
 
   // Invoke the model
   const output = model.invoke(input);
+
   return output.choices[0].message.content.trim();
+}
+
+export function sayHello(name: string | null = null): string {
+  return `Hello, ${name || "World"}!`;
 }

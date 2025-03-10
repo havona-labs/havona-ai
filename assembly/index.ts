@@ -19,6 +19,7 @@ export function generateText(instruction: string, prompt: string): string {
   // this is one of many optional parameters available for the OpenAI chat interface
   input.temperature = 0.7;
 
+  // Invoke the model
   const output = model.invoke(input);
   return output.choices[0].message.content.trim();
 }

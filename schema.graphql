@@ -1,0 +1,51 @@
+type Query {
+  # Existing queries...
+
+  # Generate text using the AI model
+  generateText(instruction: String!, prompt: String!): String!
+
+  # Say hello
+  sayHello(name: String): String!
+
+  # Add a product to the collection
+  addProduct(description: String!): String!
+
+  # Search for products
+  searchProducts(
+    product_description: String!
+    maxItems: Int!
+  ): CollectionSearchResult!
+
+  # Get a trade contract by ID
+  getTradeContract(contractId: String!): String!
+
+  # Get trade contracts for a user
+  getUserTradeContracts(userId: String!): String!
+
+  # Search for trade contracts by status
+  searchTradeContractsByStatus(status: String!): String!
+
+  # Answer questions about a trade contract
+  answerTradeContractQuestion(contractId: String!, question: String!): String!
+
+  # Summarize a user's trade contracts
+  summarizeUserTradeContracts(userId: String!): String!
+
+  # Process a user's question about their trade contracts
+  processTradeQuestion(userId: String!, question: String!): String!
+}
+
+# Collection search result type
+type CollectionSearchResult {
+  collection: String!
+  status: String!
+  objects: [CollectionObject!]!
+}
+
+# Collection object type
+type CollectionObject {
+  key: String!
+  text: String
+  score: Float
+  distance: Float
+}

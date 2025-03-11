@@ -7,11 +7,32 @@
       "auth": "bearer-token"
     }
   },
+  "connections": {
+    "dgraph": {
+      "type": "dgraph",
+      "grpcTarget": "havona-ai-final-havona-tech-ltd.hypermode.host:443",
+      "key": "${DGRAPH_API_KEY}"
+    }
+  },
   "models": {
     "post-trade-text-generator": {
       "sourceModel": "meta-llama/Llama-3.2-3B-Instruct",
       "provider": "hugging-face",
       "connection": "hypermode"
+    },
+    "minilm": {
+      "sourceModel": "sentence-transformers/all-MiniLM-L6-v2",
+      "provider": "hugging-face",
+      "connection": "hypermode"
+    }
+  },
+  "collections": {
+    "myProducts": {
+      "searchMethods": {
+        "searchMethod1": {
+          "embedder": "embed"
+        }
+      }
     }
   }
 }

@@ -1,237 +1,135 @@
+import { JSON } from "json-as";
 import { dgraph } from "@hypermode/modus-sdk-as";
-import { models } from "@hypermode/modus-sdk-as";
+import { Product } from "./classes";
+import { embedText } from "./embeddings";
+import { buildProductMutationJson } from "./helpers";
 import {
-  OpenAIChatModel,
-  SystemMessage,
-  UserMessage,
-} from "@hypermode/modus-sdk-as/models/openai/chat";
+  deleteNodePredicates,
+  ListOf,
+  searchBySimilarity,
+  getEntityById,
+  addEmbeddingToJson,
+} from "./dgraph-utils";
+import {
+  upsertTradeContract,
+  getTradeContract,
+  deleteTradeContract,
+  getTradeContractsByCommodity,
+  searchTradeContracts,
+  searchTradeContractsByCompany,
+} from "./trade_functions";
+import {
+  createExampleTradeContract,
+  searchTradeContractsExample,
+  searchByCompanyExample,
+  getContractsByCommodityExample,
+  getTradeContractExample,
+} from "./trade_search_example";
 
-// Connection name as defined in modus.json
 const DGRAPH_CONNECTION = "dgraph";
 
 /**
- * Get a trade contract by ID
- * @param contractId The ID of the trade contract to retrieve
- * @returns JSON string with the trade contract data
+ * Add or update a new product to the database
  */
-export function getTradeContract(contractId: string): string {
-  // Create a query to get a trade contract by ID
-  const query = new dgraph.Query(`
-    query getTradeContract($id: ID!) {
-      getTradeContract(id: $id) {
-        id
-        contractNo
-        contractDate
-        status
-        seller {
-          id
-          name
-        }
-        buyer {
-          id
-          name
-        }
-        productGoods {
-          description
-          quantity
-        }
-        fixedPrice
-        riskClassification
-      }
-    }
-  `).withVariable("id", contractId);
+export function upsertProduct(product: Product): Map<string, string> | null {
+  let payload = buildProductMutationJson(DGRAPH_CONNECTION, product);
 
-  // Execute the query
-  const response = dgraph.executeQuery(DGRAPH_CONNECTION, query);
+  const embedding = embedText([product.description])[0];
+  payload = addEmbeddingToJson(payload, "Product.embedding", embedding);
 
-  // Check if response is valid
-  if (!response || !response.Json) {
-    return `Error retrieving trade contract: Invalid response`;
-  }
+  const mutation = new dgraph.Mutation(payload);
+  const response = dgraph.executeMutations(DGRAPH_CONNECTION, mutation);
 
-  return response.Json;
+  return response.Uids;
 }
 
 /**
- * Get trade contracts for a user (as buyer or seller)
- * @param userId The ID of the user
- * @returns JSON string with the user's trade contracts
+ * Get a product info by its id
  */
-export function getUserTradeContracts(userId: string): string {
-  // Create a query to get trade contracts where the user is buyer or seller
-  const query = new dgraph.Query(`
-    query getUserTradeContracts($userId: ID!) {
-      queryTradeContract(filter: {
-        or: [
-          { seller: { id: { eq: $userId } } },
-          { buyer: { id: { eq: $userId } } }
-        ]
-      }) {
-        id
-        contractNo
-        contractDate
-        status
-        seller {
-          id
-          name
-        }
-        buyer {
-          id
-          name
-        }
-        productGoods {
-          description
-          quantity
-        }
-      }
-    }
-  `).withVariable("userId", userId);
-
-  // Execute the query
-  const response = dgraph.executeQuery(DGRAPH_CONNECTION, query);
-
-  // Check if response is valid
-  if (!response || !response.Json) {
-    return `Error retrieving user trade contracts: Invalid response`;
-  }
-
-  return response.Json;
+export function getProduct(id: string): Product | null {
+  const body = `
+    Product.id
+    Product.description
+    Product.title
+    Product.category {
+      Category.name
+    }`;
+  return getEntityById<Product>(DGRAPH_CONNECTION, "Product.id", id, body);
 }
-
 /**
- * Search for trade contracts by status
- * @param status The status to search for
- * @returns JSON string with matching trade contracts
+ * Delete a product by its id
  */
-export function searchTradeContractsByStatus(status: string): string {
-  // Create a query to search for trade contracts by status
-  const query = new dgraph.Query(`
-    query searchTradeContractsByStatus($status: DigitalTradeTransactionStatus!) {
-      queryTradeContract(filter: { status: { eq: $status } }) {
-        id
-        contractNo
-        contractDate
-        status
-        seller {
-          id
-          name
-        }
-        buyer {
-          id
-          name
-        }
-      }
-    }
-  `).withVariable("status", status);
 
-  // Execute the query
-  const response = dgraph.executeQuery(DGRAPH_CONNECTION, query);
-
-  // Check if response is valid
-  if (!response || !response.Json) {
-    return `Error searching trade contracts: Invalid response`;
-  }
-
-  return response.Json;
-}
-
-/**
- * Answer questions about a trade contract using AI
- * @param contractId The ID of the trade contract
- * @param question The user's question about the trade contract
- * @returns AI-generated answer based on the trade contract data
- */
-export function answerTradeContractQuestion(
-  contractId: string,
-  question: string,
-): string {
-  // Get the trade contract data
-  const contractData = getTradeContract(contractId);
-
-  // Check if we got valid data
-  if (contractData.includes("Error")) {
-    return `I couldn't retrieve information about that trade contract. ${contractData}`;
-  }
-
-  // Get the AI model
-  const model = models.getModel<OpenAIChatModel>("post-trade-text-generator");
-
-  // Create the system prompt
-  const systemPrompt = `
-You are a helpful trade assistant. Answer the user's question about their trade contract based on the data provided.
-Be specific and reference actual details from the contract when possible.
-If the data doesn't contain the answer, acknowledge that and suggest what information might help answer their question better.
-`;
-
-  // Create the user prompt with the question and contract data
-  const userPrompt = `
-User Question: ${question}
-
-Trade Contract Data:
-${contractData}
-`;
-
-  // Create the input for the model
-  const input = model.createInput([
-    new SystemMessage(systemPrompt),
-    new UserMessage(userPrompt),
+export function deleteProduct(id: string): void {
+  deleteNodePredicates(DGRAPH_CONNECTION, `eq(Product.id, "${id}")`, [
+    "Product.id",
+    "Product.description",
+    "Product.category",
   ]);
-
-  // Set parameters
-  input.temperature = 0.7;
-
-  // Generate the response
-  const output = model.invoke(input);
-  return output.choices[0].message.content.trim();
 }
 
 /**
- * Get a summary of a user's trade contracts
- * @param userId The ID of the user
- * @returns AI-generated summary of the user's trade contracts
+ * Get all products of a given category
  */
-export function summarizeUserTradeContracts(userId: string): string {
-  // Get the user's trade contracts
-  const contractsData = getUserTradeContracts(userId);
-
-  // Check if we got valid data
-  if (contractsData.includes("Error")) {
-    return `I couldn't retrieve your trade contracts. ${contractsData}`;
+export function getProductsByCategory(category: string): Product[] {
+  const query = new dgraph.Query(`{
+    list(func: eq(Category.name, "${category}")) {
+      list:~Product.category {
+        Product.id
+        Product.title
+        Product.description
+        Product.category {
+          Category.name
+        }
+      }
+    }
+  }`);
+  const response = dgraph.executeQuery(DGRAPH_CONNECTION, query);
+  const data = JSON.parse<ListOf<ListOf<Product>>>(response.Json);
+  if (data.list.length > 0) {
+    return data.list[0].list;
   }
-
-  // Get the AI model
-  const model = models.getModel<OpenAIChatModel>("post-trade-text-generator");
-
-  // Create the system prompt
-  const systemPrompt = `
-You are a helpful trade assistant. Provide a summary of the user's trade contracts based on the data provided.
-Include key information such as:
-1. Total number of contracts
-2. Contract statuses
-3. Key counterparties
-4. Types of goods/products
-5. Any notable patterns or insights
-
-Be specific and reference actual details from the contracts.
-`;
-
-  // Create the user prompt with the contracts data
-  const userPrompt = `
-Please summarize the following trade contracts:
-
-${contractsData}
-`;
-
-  // Create the input for the model
-  const input = model.createInput([
-    new SystemMessage(systemPrompt),
-    new UserMessage(userPrompt),
-  ]);
-
-  // Set parameters
-  input.temperature = 0.7;
-
-  // Generate the response
-  const output = model.invoke(input);
-  return output.choices[0].message.content.trim();
+  return [];
 }
+
+/**
+ * Search products by similarity to a given text
+ */
+export function searchProducts(search: string): Product[] {
+  const embedding = embedText([search])[0];
+  const topK = 3;
+  const body = `
+    Product.id
+    Product.description
+    Product.title
+    Product.category {
+      Category.name
+    }
+  `;
+  return searchBySimilarity<Product>(
+    DGRAPH_CONNECTION,
+    embedding,
+    "Product.embedding",
+    body,
+    topK,
+  );
+}
+
+// Export trade contract functions
+export {
+  upsertTradeContract,
+  getTradeContract,
+  deleteTradeContract,
+  getTradeContractsByCommodity,
+  searchTradeContracts,
+  searchTradeContractsByCompany,
+};
+
+// Export example functions
+export {
+  createExampleTradeContract,
+  searchTradeContractsExample,
+  searchByCompanyExample,
+  getContractsByCommodityExample,
+  getTradeContractExample,
+};
